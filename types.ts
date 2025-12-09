@@ -1,3 +1,4 @@
+
 export interface DecisionMaker {
   name: string;
   role: string;
@@ -33,7 +34,8 @@ export interface Lead {
 export interface SearchParams {
   industry: string;
   location: string;
-  service: string; 
+  service: string;
+  email: string; // New: User email for validation/gating
 }
 
 export interface ScanStatus {
