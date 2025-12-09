@@ -10,10 +10,12 @@ const App = () => {
   const [status, setStatus] = useState<ScanStatus['step']>('idle');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentService, setCurrentService] = useState('');
 
   const handleSearch = async (params: SearchParams) => {
     setStatus('searching');
     setError(null);
+    setCurrentService(params.service);
     
     // Artificial delay to show the scanning animation for effect, 
     // since the API might be too fast or too slow.
@@ -43,6 +45,7 @@ const App = () => {
     setStatus('idle');
     setLeads([]);
     setError(null);
+    setCurrentService('');
   };
 
   return (
@@ -105,7 +108,7 @@ const App = () => {
         )}
 
         {status === 'complete' && (
-          <Dashboard leads={leads} onReset={resetSearch} />
+          <Dashboard leads={leads} onReset={resetSearch} service={currentService} />
         )}
 
         {status === 'error' && (
