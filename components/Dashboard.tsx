@@ -75,12 +75,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ leads, onReset, service })
   const highQualityLeads = leads.filter(l => l.score >= 75).length;
 
   const downloadCSV = () => {
-    const headers = ['Company', 'Website', 'Industry', 'Location', 'Decision Maker', 'Role', 'Email', 'Score', 'Reason'];
+    const headers = ['Company', 'Address', 'Rating', 'Reviews', 'Website', 'Industry', 'Location', 'Decision Maker', 'Role', 'Email', 'Score', 'Reason'];
     const csvContent = "data:text/csv;charset=utf-8," 
       + headers.join(",") + "\n"
       + leads.map(l => {
           return [
             `"${l.companyName}"`,
+            `"${l.address}"`,
+            l.googleRating,
+            l.reviewCount,
             l.website,
             l.industry,
             `"${l.location}"`,

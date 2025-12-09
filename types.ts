@@ -19,6 +19,9 @@ export interface Lead {
   website: string;
   industry: string;
   location: string;
+  address: string;         // New: Physical Address
+  googleRating: number;    // New: Google Maps Star Rating
+  reviewCount: number;     // New: Number of Google Reviews
   size: string;
   decisionMaker: DecisionMaker;
   phone?: string;
@@ -30,7 +33,7 @@ export interface Lead {
 export interface SearchParams {
   industry: string;
   location: string;
-  service: string; // e.g., "SEO", "Web Development"
+  service: string; 
 }
 
 export interface ScanStatus {
