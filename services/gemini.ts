@@ -1,9 +1,9 @@
 import { Lead, SearchParams, DecisionMaker, ScoreBreakdown } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // --- Configuration ---
-const GOOGLE_MAPS_API_KEY =  'AIzaSyAl6U7t6CpIheb65VOpW_7Vv9Cjuo13yd4'; 
-// NOTE: To use real data, add VITE_GOOGLE_MAPS_API_KEY to your .env file.
-// Otherwise, the system falls back to a high-fidelity simulation.
+// Fix: Use import.meta.env for Vite, with a fallback to empty string to prevent undefined errors.
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAl6U7t6CpIheb65VOpW_7Vv9Cjuo13yd4';
 
 // --- Algorithmic Scoring Engine ---
 const calculateScore = (place: any, service: string): { score: number, breakdown: ScoreBreakdown, reason: string } => {
@@ -118,8 +118,9 @@ const generateMockLeads = (params: SearchParams): Lead[] => {
 
 // --- Main Lead Generation Function ---
 export const generateLeads = async (params: SearchParams): Promise<Lead[]> => {
+  // Graceful check for API key
   if (!GOOGLE_MAPS_API_KEY) {
-    console.warn("No Google Maps API Key found. Using high-fidelity simulation.");
+    console.warn("No Google Maps API Key found (VITE_GOOGLE_MAPS_API_KEY). Using high-fidelity simulation.");
     return new Promise(resolve => setTimeout(() => resolve(generateMockLeads(params)), 1500));
   }
 
@@ -185,24 +186,18 @@ export const generateLeads = async (params: SearchParams): Promise<Lead[]> => {
   }
 };
 
-// --- Template-Based Email Generator (No AI) ---
-export const generateOutreachEmail = async (lead: Lead, service: string): Promise<{ subject: string; body: string }> => {
-  // Logic-based templates (PAS Framework)
-  
+// --- Template-Based Email Generator (Fallback) ---
+const generateTemplateEmail = (lead: Lead, service: string): { subject: string; body: string } => {
   const firstName = lead.decisionMaker.name.split(' ')[0];
   const lowRating = lead.googleRating < 4.2;
   const lowReviews = lead.reviewCount < 20;
   
-  // 1. Subject Line Strategy
   let subject = `question about ${lead.companyName}`;
   if (lowReviews) subject = `local visibility for ${lead.companyName}`;
   else if (lowRating) subject = `reviews for ${lead.companyName}`;
 
-  // 2. Body Strategy (PAS)
-  // Hook
   const hook = `I found ${lead.companyName} on Google Maps while looking for ${lead.industry} providers in ${lead.location}.`;
   
-  // Problem / Agitate
   let problem = "";
   if (lowReviews) {
     problem = `I noticed you only have ${lead.reviewCount} reviews. In ${lead.location}, top competitors usually have 50+, which pushes you down the search results.`;
@@ -212,13 +207,55 @@ export const generateOutreachEmail = async (lead: Lead, service: string): Promis
     problem = `You have a solid profile, but I noticed your website isn't fully optimized to capture the traffic coming from Maps.`;
   }
 
-  // Solution
   const solution = `We help businesses in ${lead.industry} fix this by implementing a system to ${lowReviews ? 'automatically generate 5-star reviews' : 'optimize local rankings and conversion'}.`;
-
-  // CTA
   const cta = "Worth a quick 10-minute chat to see how we could help?";
 
   const body = `Hi ${firstName},\n\n${hook}\n\n${problem}\n\n${solution}\n\n${cta}\n\nBest,\n[Your Name]`;
 
   return { subject, body };
+};
+
+// --- AI-Based Email Generator ---
+export const generateOutreachEmail = async (lead: Lead, service: string): Promise<{ subject: string; body: string }> => {
+  if (!process.env.API_KEY) {
+    return generateTemplateEmail(lead, service);
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const prompt = `
+      You are an expert sales copywriter using the PAS (Problem-Agitate-Solution) framework.
+      Write a cold outreach email to ${lead.decisionMaker.name}, ${lead.decisionMaker.role} at ${lead.companyName}.
+      
+      Details:
+      - Industry: ${lead.industry}
+      - Location: ${lead.location}
+      - Rating: ${lead.googleRating} (${lead.reviewCount} reviews)
+      - Service: ${service}
+      - Issues: ${lead.reason}
+      
+      Return JSON with "subject" and "body".
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            subject: { type: Type.STRING },
+            body: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    const json = JSON.parse(response.text);
+    return { subject: json.subject, body: json.body };
+  } catch (error) {
+    console.warn("Gemini generation failed, falling back to template", error);
+    return generateTemplateEmail(lead, service);
+  }
 };
