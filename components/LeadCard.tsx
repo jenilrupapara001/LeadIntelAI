@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Lead } from '../types';
 import { generateOutreachEmail } from '../services/gemini';
-import { User, MapPin, Building2, ChevronDown, ChevronUp, Mail, Phone, Linkedin, ExternalLink, Target, Zap, X, Copy, RefreshCw, Send, ClipboardCheck, Edit3 } from 'lucide-react';
+import { User, MapPin, Building2, ChevronDown, ChevronUp, Mail, Phone, Linkedin, ExternalLink, Target, Zap, X, Copy, RefreshCw, Send, ClipboardCheck, Edit3, Bookmark } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 interface LeadCardProps {
   lead: Lead;
   serviceName: string;
+  isSaved?: boolean;
+  onToggleSave?: (id: string) => void;
 }
 
-export const LeadCard: React.FC<LeadCardProps> = ({ lead, serviceName }) => {
+export const LeadCard: React.FC<LeadCardProps> = ({ lead, serviceName, isSaved = false, onToggleSave }) => {
   const [expanded, setExpanded] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailData, setEmailData] = useState<{subject: string, body: string} | null>(null);
@@ -59,7 +61,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, serviceName }) => {
 
   return (
     <>
-      <div className={`bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden hover:border-cyan-500/30 transition-all duration-300 shadow-lg group`}>
+      <div className={`bg-slate-800/50 border ${isSaved ? 'border-cyan-500/40 shadow-[0_0_15px_-3px_rgba(6,182,212,0.15)]' : 'border-slate-700'} rounded-xl overflow-hidden hover:border-cyan-500/30 transition-all duration-300 shadow-lg group`}>
         {/* Header Summary */}
         <div className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-start gap-4 flex-1">
@@ -85,6 +87,15 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, serviceName }) => {
 
           {/* Quick Actions & Score */}
           <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+             {/* Bookmark Button */}
+             <button 
+                onClick={(e) => { e.stopPropagation(); onToggleSave && onToggleSave(lead.id); }}
+                className={`p-2 rounded-lg transition-all ${isSaved ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-600 hover:text-cyan-400 hover:bg-slate-800'}`}
+                title={isSaved ? "Remove from Saved" : "Save Lead"}
+             >
+               <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
+             </button>
+
              <div className="flex flex-col items-end">
                <div className="text-xs text-slate-400 font-mono mb-1">LEAD SCORE</div>
                <div className={`text-2xl font-bold font-mono px-3 py-1 rounded border bg-slate-900/50 ${getScoreColor(lead.score)}`}>

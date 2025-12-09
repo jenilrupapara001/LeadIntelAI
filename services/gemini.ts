@@ -23,7 +23,7 @@ Primary Service to Pitch: ${params.service}
    - A key decision maker (CEO, Founder, Co-Founder, Director, Marketing Head).
    - A realistic full name (avoid generic placeholders).
    - A predicted email pattern based on the company domain and common corporate email structures.
-3. Validate or intelligently generate a plausible website (must start with https:// and end with .com /.ae /.net etc.)
+3. Validate or intelligently generate a plausible website.
 4. Score each lead with a **Lead Score (0–100)** based on:
    - Likelihood that they need ${params.service}
    - Size & growth signals
@@ -52,7 +52,9 @@ Never use fake TLDs or random domains.
 === DATA VALIDATION ===
 Before returning output:
 - Ensure company names look real (no “Company 1, Demo Corp, Test LLC”).
-- Websites must be valid formats (https://companyname.ae).
+- **WEBSITES MUST BE VALID URLS**. They must start with https://.
+- **DO NOT** use "example.com", "domain.com", or invalid TLDs.
+- If you cannot find a realistic website, **exclude the lead**.
 - No missing fields.
 - No duplicates.
 - Decision maker roles must be senior level.
@@ -73,6 +75,13 @@ Return strictly a JSON array of 100 objects with the following structure:
     },
     "email": "",
     "leadScore": 0,
+    "scoreBreakdown": {
+       "onlinePresence": 0,
+       "websiteQuality": 0,
+       "seoIssues": 0,
+       "growthSignals": 0,
+       "relevancy": 0
+    },
     "reason": ""
   }
 ]
@@ -138,8 +147,16 @@ Return strictly a JSON array of 100 objects with the following structure:
 
     const rawData = JSON.parse(text);
     
+    // Strict URL Regex for http/https
+    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+
+    const validatedLeads = rawData.filter((item: any) => {
+        const isValidUrl = item.website && urlRegex.test(item.website) && !item.website.includes("example.com");
+        return isValidUrl;
+    });
+
     // Add IDs for React keys
-    return rawData.map((item: any, index: number) => ({
+    return validatedLeads.map((item: any, index: number) => ({
       ...item,
       id: `lead-${Date.now()}-${index}`
     }));
@@ -153,29 +170,34 @@ Return strictly a JSON array of 100 objects with the following structure:
 export const generateOutreachEmail = async (lead: Lead, service: string): Promise<{ subject: string; body: string }> => {
   const ai = getClient();
   const prompt = `
-    Role: World-Class B2B Copywriter.
-    Task: Write a high-converting cold email using the "Problem-Agitate-Solution" (PAS) framework.
-
-    Prospect Context:
-    - Name: ${lead.decisionMaker.name}
-    - Role: ${lead.decisionMaker.role}
-    - Company: ${lead.companyName}
-    - Industry: ${lead.industry}
-    - Specific Insight: ${lead.reason}
-    - Lead Score: ${lead.score} (If < 70, focus on fixing issues. If > 70, focus on scaling/dominating).
-
-    My Offer: ${service}
-
-    Email Structure Requirements:
-    1. **Subject**: Short (3-5 words), low friction, looks like an internal message. No clickbait.
-    2. **Salutation**: "Hi [Name],"
-    3. **The Hook**: Immediately reference the specific insight/reason provided above to prove you are not a bot.
-    4. **The Problem**: Agitate the pain point associated with their industry or score (e.g., "Most [Industry] firms struggle with X...").
-    5. **The Solution**: Briefly mention how ${service} solves this specifically. Use 2-3 bullet points if helpful for readability.
-    6. **Call to Action (CTA)**: A low-commitment "Soft Ask" (e.g., "Are you open to a 15-min chat?", "Worth a look?").
-    7. **Formatting**: Use short paragraphs. **DOUBLE NEWLINE** between paragraphs for spacing. 
+    Role: Senior B2B Sales Strategist.
+    Task: Write a "Cold Email" to a prospect.
     
-    Tone: Professional, helpful, concise, confident.
+    Goal: Start a conversation. NOT to sell immediately.
+    Style: "Peer-to-Peer" tone. Short, punchy, no marketing fluff. Plain text style.
+
+    PROSPECT:
+    - Name: ${lead.decisionMaker.name} (${lead.decisionMaker.role})
+    - Company: ${lead.companyName}
+    - Insight/Hook: ${lead.reason}
+    
+    MY OFFERING: ${service}
+
+    STRICT FRAMEWORK (PAS - Problem, Agitate, Solution):
+    
+    1. SUBJECT LINE: Internal style, lowercase, boring but relevant. Max 4 words. (e.g., "question about [company]", "idea for [company]", "[company] + [service]")
+    
+    2. THE BODY:
+       - SALUTATION: "Hi [Name],"
+       - THE HOOK (The "Why You"): Mention the specific insight regarding ${lead.companyName}. Prove you aren't a bot in 1 sentence.
+       - THE PROBLEM (Agitate): Mention a common pain point for ${lead.industry} companies regarding ${service}. 
+       - THE SOLUTION (Brief): One sentence on how we fix that specific pain point.
+       - SOFT CTA: "Worth a quick chat?" or "Open to seeing how it works?" (No "let's jump on a call at 2pm" aggression).
+    
+    3. FORMATTING:
+       - Max 100 words total.
+       - Use double line breaks between paragraphs.
+       - No emojis. 
 
     Output JSON: { "subject": "string", "body": "string" }
   `;
@@ -204,8 +226,8 @@ export const generateOutreachEmail = async (lead: Lead, service: string): Promis
     console.error("Email gen error", error);
     // Fallback if AI fails
     return {
-      subject: `Idea for ${lead.companyName}`,
-      body: `Hi ${lead.decisionMaker.name},\n\nI was researching top ${lead.industry} companies in ${lead.location} and came across ${lead.companyName}.\n\nGiven your focus, I noticed a few opportunities to improve your ${service} that usually lead to a 20-30% increase in qualified leads.\n\nWe specialize in helping companies like yours fix this exact issue.\n\nWould you be open to a 15-minute chat next week to walk through my findings?\n\nBest regards,\n[Your Name]`
+      subject: `question about ${lead.companyName}`,
+      body: `Hi ${lead.decisionMaker.name},\n\nI was looking into ${lead.companyName} and noticed you're well-positioned in the ${lead.industry} space, but might be missing some opportunities with your ${service}.\n\nMost leaders in your field struggle to scale this efficiently without adding headcount.\n\nWe've built a system that solves this directly. Worth a quick look?\n\nBest,\n[Your Name]`
     };
   }
 };
