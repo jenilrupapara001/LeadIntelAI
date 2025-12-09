@@ -4,7 +4,7 @@ import { Lead, SearchParams } from "../types";
 // Initialize the client
 // NOTE: We recreate this in the function to ensure we capture the latest env var if it changes,
 // but for this structure, a global instance is fine as long as the key is present.
-const getClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getClient = () => new GoogleGenAI({ apiKey: 'AIzaSyAFoOtS5m806_tndRpqhLOjk4JmO5kVmvg' });
 
 export const generateLeads = async (params: SearchParams): Promise<Lead[]> => {
   const ai = getClient();
